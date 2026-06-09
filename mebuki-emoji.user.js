@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         めぶきちゃん 絵文字にマウス乗せると拡大
 // @namespace    https://raw.githubusercontent.com/sissis-source/
-// @version      2026.06.09.04
+// @version      2026.06.09.05
 // @description  めぶきちゃんの絵文字にマウスを乗せると拡大表示するユーザースクリプト
 // @author       sissis
 // @match        https://mebuki.moe/app*
@@ -38,6 +38,16 @@
   function getFileName(url) {
     return url.split('/').pop().split('?')[0];
   }
+
+  // ---- めぶき ----
+
+  const mebuki = (() => {
+    function isDarkTheme() {
+      return document.documentElement.classList.contains('dark');
+    }
+
+    return { isDarkTheme };
+  })();
 
   // ---- めぶき絵文字 ----
 
@@ -337,12 +347,14 @@
     function show(img) {
       if (el) return;
 
+      const isDarkTheme = mebuki.isDarkTheme();
+
       el = document.createElement('div');
       Object.assign(el.style, {
         position: 'absolute',
-        backgroundColor: 'black',
-        color: 'white',
-        border: '1px solid black',
+        backgroundColor: isDarkTheme ? 'oklch(24.84% .0077 274.64)' : 'oklch(99.55% .0222 106.8)',
+        color: isDarkTheme ? 'oklch(88% 0 0)' : 'oklch(37.67% .154577 29.2339)',
+        border: isDarkTheme ? '1px solid oklch(37.15% 0 0)' : '1px solid oklch(90% .02 73.67)',
         borderRadius: '8px',
         padding: '10px',
         zIndex: '99999',
@@ -359,7 +371,10 @@
 
       const info = document.createElement('div');
       info.textContent = 'Cキーでコピー';
-      Object.assign(info.style, { fontSize: '12px', color: '#aaa' });
+      Object.assign(info.style, {
+        fontSize: '12px',
+        color: isDarkTheme ? '#aaa' : '#666',
+      });
 
       el.appendChild(icon);
       el.appendChild(name);
