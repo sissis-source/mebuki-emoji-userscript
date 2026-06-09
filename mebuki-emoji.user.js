@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         めぶきちゃん 絵文字にマウス乗せると拡大
+// @name         めぶきちゃん 絵文字にマウス乗せると拡大__
 // @namespace    https://raw.githubusercontent.com/sissis-source/
-// @version      2026.06.09
+// @version      2026.06.09.02
 // @description  めぶきちゃんの絵文字にマウスを乗せると拡大表示するユーザースクリプト
 // @author       sissis
 // @match        https://mebuki.moe/app/t/*
@@ -291,19 +291,19 @@
       "w6ob979g404osx738o9yxs74.webp": ":sushinarusan:",
     };
 
-    function getKey(img) {
+    function getEmoji(img) {
       if (img.alt.includes(':undefined:')) {
-        const fileName= getFileName(img.src);
-        return (icons[fileName] || ':undefined:');
+        const fileName = getFileName(img.src);
+        return `<${icons[fileName] || ':undefined:'}>`;
       } else {
-        return img.alt.replaceAll(/<|>|&gt;|&lt;/g, '');
+        return img.alt;
       }
     }
 
-    return { getKey };
+    return { getEmoji };
   })();
 
-  // ---- ツールチップウィンドウ ----
+  // ---- 絵文字画像とキーを表示するウィンドウ ----
 
   const infoWindow = (() => {
     let el = null;
@@ -321,6 +321,7 @@
         backgroundColor: 'black',
         color: 'white',
         border: '1px solid black',
+        borderRadius: '8px',
         padding: '10px',
         zIndex: '99999',
         display: 'flex',
@@ -332,8 +333,7 @@
       Object.assign(icon.style, { width: '120px', height: '120px' });
 
       const name = document.createElement('div');
-      const emojiKey = emojiCache.getKey(img);
-      name.textContent = `<${emojiKey}>`;
+      name.textContent = emojiCache.getEmoji(img);
 
       el.appendChild(icon);
       el.appendChild(name);
@@ -366,12 +366,11 @@
 
       // クリックで絵文字キーをクリップボードにコピー
       img.addEventListener('click', () => {
-        const emojiKey = emojiCache.getKey(img);
-        const emojiTag = `<${emojiKey}>`;
+        const emoji = emojiCache.getEmoji(img);
 
-        navigator.clipboard.writeText(emojiTag).then(() => {
+        navigator.clipboard.writeText(emoji).then(() => {
           // コピー成功
-          alert(`${emojiTag} をクリップボードにコピーしました。`);
+          alert(`${emoji} をクリップボードにコピーしました。`);
         }).catch(err => {
           // コピー失敗
           alert('絵文字のコピーに失敗しました。', err);
