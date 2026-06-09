@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         めぶきちゃん 絵文字にマウス乗せると拡大__
+// @name         めぶきちゃん 絵文字にマウス乗せると拡大
 // @namespace    https://raw.githubusercontent.com/sissis-source/
 // @version      2026.06.09.02
 // @description  めぶきちゃんの絵文字にマウスを乗せると拡大表示するユーザースクリプト
@@ -364,19 +364,22 @@
       img.addEventListener('mouseenter', () => infoWindow.show(img));
       img.addEventListener('mouseleave', () => infoWindow.hide());
 
-      // クリックで絵文字キーをクリップボードにコピー
-      img.addEventListener('click', () => {
-        const emoji = emojiCache.getEmoji(img);
+      // 親にbuttonがいない場合
+      if (!img.closest('button')) {
+        // クリックで絵文字キーをクリップボードにコピー
+        img.addEventListener('click', () => {
+          const emoji = emojiCache.getEmoji(img);
 
-        navigator.clipboard.writeText(emoji).then(() => {
-          // コピー成功
-          alert(`${emoji} をクリップボードにコピーしました。`);
-        }).catch(err => {
-          // コピー失敗
-          alert('絵文字のコピーに失敗しました。', err);
+          navigator.clipboard.writeText(emoji).then(() => {
+            // コピー成功
+            alert(`${emoji} をクリップボードにコピーしました。`);
+          }).catch(err => {
+            // コピー失敗
+            alert('絵文字のコピーに失敗しました。', err);
+          });
         });
-      });
-      img.style.cursor = 'pointer';
+        img.style.cursor = 'pointer';
+      }
     }
 
     function scan() {
