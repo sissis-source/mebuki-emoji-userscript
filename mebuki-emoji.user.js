@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         めぶきちゃん 絵文字にマウス乗せると拡大
 // @namespace    https://raw.githubusercontent.com/sissis-source/
-// @version      2026.06.09.03
+// @version      2026.06.09.04
 // @description  めぶきちゃんの絵文字にマウスを乗せると拡大表示するユーザースクリプト
 // @author       sissis
 // @match        https://mebuki.moe/app*
@@ -39,9 +39,9 @@
     return url.split('/').pop().split('?')[0];
   }
 
-  // ---- 絵文字キャッシュ ----
+  // ---- めぶき絵文字 ----
 
-  const emojiCache = (() => {
+  const mebukiEmoji = (() => {
     const icons = {
       "m414ufodim5ptodzuf56uom3.webp": ":soudane:",
       "gqmaco39gqb9im9h5pik0hk3.webp": ":otukare:",
@@ -300,13 +300,25 @@
       }
     }
 
-    return { getEmoji };
+    function copyToClipboard(img) {
+      const emoji = getEmoji(img);
+      navigator.clipboard.writeText(emoji).then(() => {
+        // コピー成功
+        alert(`${emoji} をクリップボードにコピーしました。`);
+      }).catch(err => {
+        // コピー失敗
+        alert('絵文字のコピーに失敗しました。', err);
+      });
+    }
+
+    return { getEmoji, copyToClipboard };
   })();
 
   // ---- 絵文字画像とキーを表示するウィンドウ ----
 
   const infoWindow = (() => {
     let el = null;
+    let onCKeydown = null;
 
     function onMouseMove(e) {
       if (!el) return;
@@ -314,7 +326,17 @@
       el.style.top = `${e.pageY + 10}px`;
     }
 
+    function createOnCKeydown(img) {
+      return (e) => {
+        if (e.key.toLowerCase() === 'c') {
+          mebukiEmoji.copyToClipboard(img);
+        }
+      };
+    }
+
     function show(img) {
+      if (el) return;
+
       el = document.createElement('div');
       Object.assign(el.style, {
         position: 'absolute',
@@ -333,19 +355,29 @@
       Object.assign(icon.style, { width: '120px', height: '120px' });
 
       const name = document.createElement('div');
-      name.textContent = emojiCache.getEmoji(img);
+      name.textContent = mebukiEmoji.getEmoji(img);
+
+      const info = document.createElement('div');
+      info.textContent = 'Cキーでコピー';
+      Object.assign(info.style, { fontSize: '12px', color: '#aaa' });
 
       el.appendChild(icon);
       el.appendChild(name);
+      el.appendChild(info);
       document.body.appendChild(el);
       document.addEventListener('mousemove', onMouseMove);
+      // Cキーで絵文字をクリップボードにコピー
+      onCKeydown = createOnCKeydown(img);
+      document.addEventListener('keydown', onCKeydown);
     }
 
     function hide() {
       if (!el) return;
       document.body.removeChild(el);
       document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('keydown', onCKeydown);
       el = null;
+      onCKeydown = null;
     }
 
     return { show, hide };
@@ -367,17 +399,7 @@
       // 親にbuttonがいない場合
       if (!img.closest('button')) {
         // クリックで絵文字キーをクリップボードにコピー
-        img.addEventListener('click', () => {
-          const emoji = emojiCache.getEmoji(img);
-
-          navigator.clipboard.writeText(emoji).then(() => {
-            // コピー成功
-            alert(`${emoji} をクリップボードにコピーしました。`);
-          }).catch(err => {
-            // コピー失敗
-            alert('絵文字のコピーに失敗しました。', err);
-          });
-        });
+        img.addEventListener('click', () => mebukiEmoji.copyToClipboard(img));
         img.style.cursor = 'pointer';
       }
     }
