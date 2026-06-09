@@ -1,10 +1,10 @@
 // ==UserScript==
 // @name         めぶきちゃん 絵文字にマウス乗せると拡大
 // @namespace    https://raw.githubusercontent.com/sissis-source/
-// @version      2026.06.09.02
+// @version      2026.06.09.03
 // @description  めぶきちゃんの絵文字にマウスを乗せると拡大表示するユーザースクリプト
 // @author       sissis
-// @match        https://mebuki.moe/app/t/*
+// @match        https://mebuki.moe/app*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=mebuki.moe
 // @downloadURL  https://raw.githubusercontent.com/sissis-source/mebuki-emoji-userscript/refs/heads/main/mebuki-emoji.user.js
 // @updateURL    https://raw.githubusercontent.com/sissis-source/mebuki-emoji-userscript/refs/heads/main/mebuki-emoji.user.js
