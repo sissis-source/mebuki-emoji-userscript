@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         めぶきちゃん 絵文字にマウス乗せると拡大
 // @namespace    https://raw.githubusercontent.com/sissis-source/
-// @version      2026.06.09.05
+// @version      2026.06.09.06
 // @description  めぶきちゃんの絵文字にマウスを乗せると拡大表示するユーザースクリプト
 // @author       sissis
 // @match        https://mebuki.moe/app*
@@ -332,8 +332,25 @@
 
     function onMouseMove(e) {
       if (!el) return;
-      el.style.left = `${e.pageX + 10}px`;
-      el.style.top = `${e.pageY + 10}px`;
+      const offset = 10;
+      const rect = el.getBoundingClientRect();
+      const viewportWidth = document.documentElement.clientWidth;
+      const viewportHeight = document.documentElement.clientHeight;
+      let left = e.clientX + offset;
+      let top = e.clientY + offset;
+
+      if (left + rect.width > viewportWidth) {
+        // 画面右端をはみ出す場合は、マウスの左側に表示
+        left = Math.max(e.clientX - rect.width - offset, 0);
+      }
+
+      if (top + rect.height > viewportHeight) {
+        // 画面下端をはみ出す場合は、マウスの上側に表示
+        top = Math.max(e.clientY - rect.height - offset, 0);
+      }
+
+      el.style.left = `${left + window.pageXOffset}px`;
+      el.style.top = `${top + window.pageYOffset}px`;
     }
 
     function createOnCKeydown(img) {
