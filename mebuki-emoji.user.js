@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         めぶきちゃん 絵文字にマウス乗せると拡大
 // @namespace    https://raw.githubusercontent.com/sissis-source/
-// @version      2026.06.10.01
+// @version      2026.06.10.02
 // @description  めぶきちゃんの絵文字にマウスを乗せると拡大表示するユーザースクリプト
 // @author       sissis
 // @match        https://mebuki.moe/app*
@@ -14,42 +14,64 @@
 (function () {
   'use strict';
 
-  const MAX_ZOOM_SIZE = '120px';
+  const CONFIG = {
+    emojiSelector: 'img.custom-emoji-image',
+    hoverOffset: 10,
+    initDelayMs: 400,
+    initRetryDelayMs: 500,
+    mainSelector: 'main',
+    maxZoomSize: '120px',
+    scanIntervalMs: 500,
+  };
+
+  const UNKNOWN_ALT = ':undefined:';
+  const UNKNOWN_EMOJI = '<:undefined:>';
 
   // ---- ユーティリティ ----
 
   function throttle(fn, interval) {
     let lastTime = 0;
-    let timer = null;
+    let timerId = null;
+    let lastArgs = null;
+
+    function invoke() {
+      lastTime = Date.now();
+      timerId = null;
+      fn(...lastArgs);
+      lastArgs = null;
+    }
+
     return (...args) => {
+      lastArgs = args;
       const now = Date.now();
       const remaining = interval - (now - lastTime);
+
       if (remaining <= 0) {
-        lastTime = now;
-        fn(...args);
-      } else {
-        clearTimeout(timer);
-        timer = setTimeout(() => {
-          lastTime = Date.now();
-          fn(...args);
-        }, remaining);
+        if (timerId) {
+          clearTimeout(timerId);
+          timerId = null;
+        }
+        invoke();
+        return;
+      }
+
+      if (!timerId) {
+        timerId = setTimeout(invoke, remaining);
       }
     };
   }
 
   function getFileName(url) {
-    return url.split('/').pop().split('?')[0];
+    try {
+      return new URL(url, location.href).pathname.split('/').pop();
+    } catch (_) {
+      return url.split('/').pop().split('?')[0];
+    }
   }
 
-  // ---- めぶき ----
-
-  const mebuki = (() => {
-    function isDarkTheme() {
-      return document.documentElement.classList.contains('dark');
-    }
-
-    return { isDarkTheme };
-  })();
+  function isDarkTheme() {
+    return document.documentElement.classList.contains('dark');
+  }
 
   // ---- めぶき絵文字 ----
 
@@ -303,27 +325,29 @@
       "w6ob979g404osx738o9yxs74.webp": ":sushinarusan:",
     };
 
-    function getEmoji(img) {
-      if (img.alt.includes(':undefined:')) {
-        const fileName = getFileName(img.src);
-        return `<${icons[fileName] || ':undefined:'}>`;
-      } else {
+    function getEmojiTag(img) {
+      if (!img.alt.includes(UNKNOWN_ALT)) {
         return img.alt;
+      }
+
+      const fileName = getFileName(img.src);
+      const iconName = icons[fileName];
+      return iconName ? `<${iconName}>` : UNKNOWN_EMOJI;
+    }
+
+    async function copyToClipboard(img) {
+      const emoji = getEmojiTag(img);
+
+      try {
+        await navigator.clipboard.writeText(emoji);
+        alert(`${emoji} をクリップボードにコピーしました。`);
+      } catch (err) {
+        console.error('絵文字のコピーに失敗しました。', err);
+        alert('絵文字のコピーに失敗しました。');
       }
     }
 
-    function copyToClipboard(img) {
-      const emoji = getEmoji(img);
-      navigator.clipboard.writeText(emoji).then(() => {
-        // コピー成功
-        alert(`${emoji} をクリップボードにコピーしました。`);
-      }).catch(err => {
-        // コピー失敗
-        alert('絵文字のコピーに失敗しました。', err);
-      });
-    }
-
-    return { getEmoji, copyToClipboard };
+    return { copyToClipboard, getEmojiTag };
   })();
 
   // ---- 絵文字画像とキーを表示するウィンドウ ----
@@ -332,24 +356,53 @@
     let el = null;
     let onCKeydown = null;
 
-    function onMouseMove(e) {
-      if (!el) return;
-      const offset = 10;
-      const rect = el.getBoundingClientRect();
+    const themeStyles = {
+      dark: {
+        backgroundColor: 'oklch(24.84% .0077 274.64)',
+        border: '1px solid oklch(37.15% 0 0)',
+        color: 'oklch(88% 0 0)',
+        subColor: '#aaa',
+      },
+      light: {
+        backgroundColor: 'oklch(99.55% .0222 106.8)',
+        border: '1px solid oklch(90% .02 73.67)',
+        color: 'oklch(37.67% .154577 29.2339)',
+        subColor: '#666',
+      },
+    };
+
+    function getThemeStyle() {
+      return isDarkTheme() ? themeStyles.dark : themeStyles.light;
+    }
+
+    function fitToViewport({ x, y, width, height }) {
+      const offset = CONFIG.hoverOffset;
       const viewportWidth = document.documentElement.clientWidth;
       const viewportHeight = document.documentElement.clientHeight;
-      let left = e.clientX + offset;
-      let top = e.clientY + offset;
+      let left = x + offset;
+      let top = y + offset;
 
-      if (left + rect.width > viewportWidth) {
-        // 画面右端をはみ出す場合は、マウスの左側に表示
-        left = Math.max(e.clientX - rect.width - offset, 0);
+      if (left + width > viewportWidth) {
+        left = Math.max(x - width - offset, 0);
       }
 
-      if (top + rect.height > viewportHeight) {
-        // 画面下端をはみ出す場合は、マウスの上側に表示
-        top = Math.max(e.clientY - rect.height - offset, 0);
+      if (top + height > viewportHeight) {
+        top = Math.max(y - height - offset, 0);
       }
+
+      return { left, top };
+    }
+
+    function onMouseMove(e) {
+      if (!el) return;
+
+      const rect = el.getBoundingClientRect();
+      const { left, top } = fitToViewport({
+        height: rect.height,
+        width: rect.width,
+        x: e.clientX,
+        y: e.clientY,
+      });
 
       el.style.left = `${left + window.pageXOffset}px`;
       el.style.top = `${top + window.pageYOffset}px`;
@@ -363,58 +416,67 @@
       };
     }
 
-    function show(img) {
-      if (el) return;
-
-      const isDarkTheme = mebuki.isDarkTheme();
-
-      el = document.createElement('div');
-      Object.assign(el.style, {
+    function createWindowElement(style) {
+      const container = document.createElement('div');
+      Object.assign(container.style, {
         position: 'absolute',
-        backgroundColor: isDarkTheme ? 'oklch(24.84% .0077 274.64)' : 'oklch(99.55% .0222 106.8)',
-        color: isDarkTheme ? 'oklch(88% 0 0)' : 'oklch(37.67% .154577 29.2339)',
-        border: isDarkTheme ? '1px solid oklch(37.15% 0 0)' : '1px solid oklch(90% .02 73.67)',
+        backgroundColor: style.backgroundColor,
+        color: style.color,
+        border: style.border,
         borderRadius: '8px',
         padding: '10px',
         zIndex: '99999',
         display: 'flex',
         flexDirection: 'column',
+        pointerEvents: 'none',
       });
 
+      return container;
+    }
+
+    function createContent(img, style) {
       const icon = document.createElement('img');
       icon.src = img.src;
       Object.assign(icon.style, {
-        maxWidth: MAX_ZOOM_SIZE,
-        maxHeight: MAX_ZOOM_SIZE,
+        maxWidth: CONFIG.maxZoomSize,
+        maxHeight: CONFIG.maxZoomSize,
         width: 'auto',
-        height: 'auto'
+        height: 'auto',
       });
 
       const name = document.createElement('div');
-      name.textContent = mebukiEmoji.getEmoji(img);
+      name.textContent = mebukiEmoji.getEmojiTag(img);
 
       const info = document.createElement('div');
       info.textContent = 'Cキーでコピー';
       Object.assign(info.style, {
         fontSize: '12px',
-        color: isDarkTheme ? '#aaa' : '#666',
+        color: style.subColor,
       });
 
-      el.appendChild(icon);
-      el.appendChild(name);
-      el.appendChild(info);
+      return [icon, name, info];
+    }
+
+    function show(img) {
+      if (el) return;
+
+      const style = getThemeStyle();
+      el = createWindowElement(style);
+      el.append(...createContent(img, style));
       document.body.appendChild(el);
+
       document.addEventListener('mousemove', onMouseMove);
-      // Cキーで絵文字をクリップボードにコピー
       onCKeydown = createOnCKeydown(img);
       document.addEventListener('keydown', onCKeydown);
     }
 
     function hide() {
       if (!el) return;
-      document.body.removeChild(el);
+      el.remove();
       document.removeEventListener('mousemove', onMouseMove);
-      document.removeEventListener('keydown', onCKeydown);
+      if (onCKeydown) {
+        document.removeEventListener('keydown', onCKeydown);
+      }
       el = null;
       onCKeydown = null;
     }
@@ -425,26 +487,37 @@
   // ---- 絵文字画像拡張 ----
 
   const emojiImage = (() => {
-    const processed = new WeakSet();
+    const enhancedImg = new WeakSet();
 
-    function extend(img) {
-      if (processed.has(img)) return;
-      processed.add(img);
+    // 絵文字がレス内のものかどうか。
+    function isInlineEmoji(img) {
+      return !img.closest('button');
+    }
 
-      // マウスオーバーでツールチップ表示
+    function attachHoverPreview(img) {
       img.addEventListener('mouseenter', () => infoWindow.show(img));
       img.addEventListener('mouseleave', () => infoWindow.hide());
+    }
 
-      // 親にbuttonがいない場合
-      if (!img.closest('button')) {
-        // クリックで絵文字キーをクリップボードにコピー
-        img.addEventListener('click', () => mebukiEmoji.copyToClipboard(img));
-        img.style.cursor = 'pointer';
+    function attachClickCopy(img) {
+      img.addEventListener('click', () => mebukiEmoji.copyToClipboard(img));
+      img.style.cursor = 'pointer';
+    }
+
+    function enhance(img) {
+      if (enhancedImg.has(img)) return;
+      enhancedImg.add(img);
+
+      attachHoverPreview(img);
+
+      // レス内の絵文字をボタン化する。
+      if (isInlineEmoji(img)) {
+        attachClickCopy(img);
       }
     }
 
     function scan() {
-      document.querySelectorAll('img.custom-emoji-image').forEach(extend);
+      document.querySelectorAll(CONFIG.emojiSelector).forEach(enhance);
     }
 
     return { scan };
@@ -457,7 +530,7 @@
 
     function start(target) {
       if (observer) return;
-      const throttledScan = throttle(emojiImage.scan, 500);
+      const throttledScan = throttle(emojiImage.scan, CONFIG.scanIntervalMs);
       observer = new MutationObserver(throttledScan);
       observer.observe(target, { childList: true, subtree: true });
     }
@@ -468,9 +541,9 @@
   // ---- 初期化 ----
 
   function init() {
-    const main = document.querySelector('main');
+    const main = document.querySelector(CONFIG.mainSelector);
     if (!main) {
-      setTimeout(init, 500);
+      setTimeout(init, CONFIG.initRetryDelayMs);
       return;
     }
 
@@ -478,5 +551,5 @@
     domObserver.start(main);
   }
 
-  setTimeout(init, 400);
+  setTimeout(init, CONFIG.initDelayMs);
 })();
