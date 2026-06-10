@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         めぶきちゃん 絵文字にマウス乗せると拡大
 // @namespace    https://raw.githubusercontent.com/sissis-source/
-// @version      2026.06.09.06
+// @version      2026.06.10.01
 // @description  めぶきちゃんの絵文字にマウスを乗せると拡大表示するユーザースクリプト
 // @author       sissis
 // @match        https://mebuki.moe/app*
@@ -13,6 +13,8 @@
 
 (function () {
   'use strict';
+
+  const MAX_ZOOM_SIZE = '120px';
 
   // ---- ユーティリティ ----
 
@@ -381,7 +383,12 @@
 
       const icon = document.createElement('img');
       icon.src = img.src;
-      Object.assign(icon.style, { width: '120px', height: '120px' });
+      Object.assign(icon.style, {
+        maxWidth: MAX_ZOOM_SIZE,
+        maxHeight: MAX_ZOOM_SIZE,
+        width: 'auto',
+        height: 'auto'
+      });
 
       const name = document.createElement('div');
       name.textContent = mebukiEmoji.getEmoji(img);
