@@ -355,7 +355,7 @@
 
   const infoWindow = (() => {
     let el = null;
-    let onCKeydown = null;
+    let onKeydown = null;
 
     const themeStyles = {
       dark: {
@@ -409,10 +409,17 @@
       el.style.top = `${top + window.pageYOffset}px`;
     }
 
-    function createOnCKeydown(img) {
+    function createOnKeydown(img) {
       return (e) => {
-        if (e.key.toLowerCase() === 'c') {
+        const key = e.key.toLowerCase();
+
+        if (key === 'c') {
           mebukiEmoji.copyToClipboard(img);
+          return;
+        }
+
+        if (key === 'escape') {
+          hide();
         }
       };
     }
@@ -467,19 +474,19 @@
       document.body.appendChild(el);
 
       document.addEventListener('mousemove', onMouseMove);
-      onCKeydown = createOnCKeydown(img);
-      document.addEventListener('keydown', onCKeydown);
+      onKeydown = createOnKeydown(img);
+      document.addEventListener('keydown', onKeydown);
     }
 
     function hide() {
       if (!el) return;
       el.remove();
       document.removeEventListener('mousemove', onMouseMove);
-      if (onCKeydown) {
-        document.removeEventListener('keydown', onCKeydown);
+      if (onKeydown) {
+        document.removeEventListener('keydown', onKeydown);
       }
       el = null;
-      onCKeydown = null;
+      onKeydown = null;
     }
 
     return { show, hide };
