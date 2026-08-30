@@ -2,7 +2,7 @@
 // @name         めぶきちゃん 絵文字にマウス乗せると拡大
 // @namespace    https://raw.githubusercontent.com/sissis-source/
 // @homepage     https://github.com/sissis-source/mebuki-emoji-userscript
-// @version      2026.06.10.03
+// @version      2026.06.10.04
 // @description  めぶきちゃんの絵文字にマウスを乗せると拡大表示するユーザースクリプト
 // @author       sissis
 // @match        https://mebuki.moe/app*
@@ -17,12 +17,11 @@
 
   const CONFIG = {
     emojiSelector: 'img.custom-emoji-image',
-    hoverOffset: 10,
     initDelayMs: 400,
     initRetryDelayMs: 500,
     mainSelector: 'main',
-    maxZoomSize: '120px',
     scanIntervalMs: 500,
+    tooltipSelector: '#emoji-tooltip',
   };
 
   const UNKNOWN_ALT = ':undefined:';
@@ -68,10 +67,6 @@
     } catch (_) {
       return url.split('/').pop().split('?')[0];
     }
-  }
-
-  function isDarkTheme() {
-    return document.documentElement.classList.contains('dark');
   }
 
   // ---- めぶき絵文字 ----
@@ -351,145 +346,48 @@
     return { copyToClipboard, getEmojiTag };
   })();
 
-  // ---- 絵文字画像とキーを表示するウィンドウ ----
+  // ---- サイト標準の絵文字 tooltip ----
 
-  const infoWindow = (() => {
-    let el = null;
-    let onKeydown = null;
+  const emojiTooltip = (() => {
+    const copyHintAttribute = 'data-mebuki-copy-hint';
 
-    const themeStyles = {
-      dark: {
-        backgroundColor: 'oklch(24.84% .0077 274.64)',
-        border: '1px solid oklch(37.15% 0 0)',
-        color: 'oklch(88% 0 0)',
-        subColor: '#aaa',
-      },
-      light: {
-        backgroundColor: 'oklch(99.55% .0222 106.8)',
-        border: '1px solid oklch(90% .02 73.67)',
-        color: 'oklch(37.67% .154577 29.2339)',
-        subColor: '#666',
-      },
-    };
+    function addCopyHint(tooltip) {
+      if (tooltip.hasAttribute(copyHintAttribute)) return;
 
-    function getThemeStyle() {
-      return isDarkTheme() ? themeStyles.dark : themeStyles.light;
+      const hint = document.createElement('span');
+      hint.textContent = 'Cキーでコピー';
+      hint.style.fontSize = '12px';
+      tooltip.appendChild(hint);
+      tooltip.setAttribute(copyHintAttribute, '');
     }
 
-    function fitToViewport({ x, y, width, height }) {
-      const offset = CONFIG.hoverOffset;
-      const viewportWidth = document.documentElement.clientWidth;
-      const viewportHeight = document.documentElement.clientHeight;
-      let left = x + offset;
-      let top = y + offset;
-
-      if (left + width > viewportWidth) {
-        left = Math.max(x - width - offset, 0);
-      }
-
-      if (top + height > viewportHeight) {
-        top = Math.max(y - height - offset, 0);
-      }
-
-      return { left, top };
+    function getVisibleTooltip() {
+      const tooltip = document.querySelector(CONFIG.tooltipSelector);
+      if (!tooltip || tooltip.dataset.state === 'closed') return null;
+      return tooltip;
     }
 
-    function onMouseMove(e) {
-      if (!el) return;
+    function copyFromTooltip(e) {
+      if (e.key.toLowerCase() !== 'c') return;
 
-      const rect = el.getBoundingClientRect();
-      const { left, top } = fitToViewport({
-        height: rect.height,
-        width: rect.width,
-        x: e.clientX,
-        y: e.clientY,
-      });
-
-      el.style.left = `${left + window.pageXOffset}px`;
-      el.style.top = `${top + window.pageYOffset}px`;
+      const tooltip = getVisibleTooltip();
+      const img = tooltip?.querySelector('img');
+      if (img) mebukiEmoji.copyToClipboard(img);
     }
 
-    function createOnKeydown(img) {
-      return (e) => {
-        const key = e.key.toLowerCase();
-
-        if (key === 'c') {
-          mebukiEmoji.copyToClipboard(img);
-          return;
-        }
-
-        if (key === 'escape') {
-          hide();
-        }
-      };
+    function scan() {
+      const tooltip = document.querySelector(CONFIG.tooltipSelector);
+      if (tooltip) addCopyHint(tooltip);
     }
 
-    function createWindowElement(style) {
-      const container = document.createElement('div');
-      Object.assign(container.style, {
-        position: 'absolute',
-        backgroundColor: style.backgroundColor,
-        color: style.color,
-        border: style.border,
-        borderRadius: '8px',
-        padding: '10px',
-        zIndex: '99999',
-        display: 'flex',
-        flexDirection: 'column',
-        pointerEvents: 'none',
-      });
-
-      return container;
+    function start() {
+      document.addEventListener('keydown', copyFromTooltip);
+      const observer = new MutationObserver(scan);
+      observer.observe(document.body, { childList: true, subtree: true });
+      scan();
     }
 
-    function createContent(img, style) {
-      const icon = document.createElement('img');
-      icon.src = img.src;
-      Object.assign(icon.style, {
-        maxWidth: CONFIG.maxZoomSize,
-        maxHeight: CONFIG.maxZoomSize,
-        width: 'auto',
-        height: 'auto',
-      });
-
-      const name = document.createElement('div');
-      name.textContent = mebukiEmoji.getEmojiTag(img);
-
-      const info = document.createElement('div');
-      info.textContent = 'Cキーでコピー';
-      Object.assign(info.style, {
-        fontSize: '12px',
-        color: style.subColor,
-      });
-
-      return [icon, name, info];
-    }
-
-    function show(img) {
-      if (el) return;
-
-      const style = getThemeStyle();
-      el = createWindowElement(style);
-      el.append(...createContent(img, style));
-      document.body.appendChild(el);
-
-      document.addEventListener('mousemove', onMouseMove);
-      onKeydown = createOnKeydown(img);
-      document.addEventListener('keydown', onKeydown);
-    }
-
-    function hide() {
-      if (!el) return;
-      el.remove();
-      document.removeEventListener('mousemove', onMouseMove);
-      if (onKeydown) {
-        document.removeEventListener('keydown', onKeydown);
-      }
-      el = null;
-      onKeydown = null;
-    }
-
-    return { show, hide };
+    return { start };
   })();
 
   // ---- 絵文字画像拡張 ----
@@ -502,11 +400,6 @@
       return !img.closest('button');
     }
 
-    function attachHoverPreview(img) {
-      img.addEventListener('mouseenter', () => infoWindow.show(img));
-      img.addEventListener('mouseleave', () => infoWindow.hide());
-    }
-
     function attachClickCopy(img) {
       img.addEventListener('click', () => mebukiEmoji.copyToClipboard(img));
       img.style.cursor = 'pointer';
@@ -515,8 +408,6 @@
     function enhance(img) {
       if (enhancedImg.has(img)) return;
       enhancedImg.add(img);
-
-      attachHoverPreview(img);
 
       // レス内の絵文字をボタン化する。
       if (isInlineEmoji(img)) {
@@ -556,6 +447,7 @@
     }
 
     emojiImage.scan();
+    emojiTooltip.start();
     domObserver.start(main);
   }
 

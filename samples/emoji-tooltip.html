@@ -1,0 +1,52 @@
+<!-- ページ上の絵文字にマウスが乗ると、以下のdiv要素がbodyに追加されて emoji-tooltip が表示されます。マウスが外れると削除されます. -->
+
+<div
+  data-side="top"
+  data-align="center"
+  data-state="open"
+  role="tooltip"
+  id="emoji-tooltip"
+  class="data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 z-70 max-h-[80vh] origin-(--radix-popover-content-transform-origin) overflow-y-visible outline-hidden data-[state=closed]:animate-out data-[state=open]:animate-in flex w-auto flex-col items-center gap-1.5 rounded-lg border border-foreground/40 bg-background p-2 text-foreground text-sm shadow-xl [&amp;&gt;[data-slot=popover-arrow]]:hidden pointer-events-none"
+  data-scroll-allowed="true"
+  data-slot="popover-content"
+  style="
+    --radix-popover-content-transform-origin: var(
+      --radix-popper-transform-origin
+    );
+    --radix-popover-content-available-width: var(
+      --radix-popper-available-width
+    );
+    --radix-popover-content-available-height: var(
+      --radix-popper-available-height
+    );
+    --radix-popover-trigger-width: var(--radix-popper-anchor-width);
+    --radix-popover-trigger-height: var(--radix-popper-anchor-height);
+  "
+  tabindex="-1"
+>
+  <img
+    alt=":tasukaru_gyojinnami:"
+    class="size-28 object-contain"
+    draggable="false"
+    src="https://storage.mebuki.moe/emojis/zcplu45lnjjlftfexe07s3c5.webp"
+  /><span class="text-sm">:tasukaru_gyojinnami:</span
+  ><span
+    style="
+      position: absolute;
+      bottom: 0px;
+      transform: translateY(100%);
+      left: 73.5px;
+    "
+    ><svg
+      aria-hidden="true"
+      class="fill-popover drop-shadow-[0_1px_0] drop-shadow-foreground/30 will-change-transform dark:drop-shadow-foreground/60"
+      data-slot="popover-arrow"
+      style="display: block"
+      width="12"
+      height="7"
+      viewBox="0 0 30 10"
+      preserveAspectRatio="none"
+    >
+      <polygon points="0,0 30,0 15,10"></polygon></svg
+  ></span>
+</div>
