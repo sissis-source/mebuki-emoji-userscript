@@ -1,9 +1,9 @@
 // ==UserScript==
-// @name         めぶきちゃん 絵文字にマウス乗せると拡大
+// @name         めぶきちゃんの絵文字ツールチップを拡張
 // @namespace    https://raw.githubusercontent.com/sissis-source/
 // @homepage     https://github.com/sissis-source/mebuki-emoji-userscript
-// @version      2026.06.10.05
-// @description  めぶきちゃんの絵文字にマウスを乗せると拡大表示するユーザースクリプト
+// @version      2026.08.31.01
+// @description  めぶきちゃんの絵文字ツールチップを拡張
 // @author       sissis
 // @match        https://mebuki.moe/app*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=mebuki.moe
@@ -22,6 +22,12 @@
     mainSelector: 'main',
     scanIntervalMs: 500,
     tooltipSelector: '#emoji-tooltip',
+  };
+
+  const _changelog = {
+    '2026.08.31.01': [
+      'めぶきちゃん標準の絵文字ツールチップに対応',
+    ],
   };
 
   const UNKNOWN_ALT = ':undefined:';
@@ -373,6 +379,8 @@
 
   // ---- サイト標準の絵文字 tooltip ----
 
+  let lastPointer = { x: 0, y: 0 };
+
   const emojiTooltip = (() => {
     const copyHintAttribute = 'data-mebuki-copy-hint';
     let keydownListener = null;
@@ -397,7 +405,10 @@
       if (e.key.toLowerCase() !== 'c') return;
 
       const tooltip = getVisibleTooltip();
-      const img = tooltip?.querySelector('img');
+      if (!tooltip) return;
+
+      const target = document.elementFromPoint(lastPointer.x, lastPointer.y);
+      const img = target?.closest('img') ?? tooltip.querySelector('img');
       if (img) mebukiEmoji.copyToClipboard(img);
     }
 
@@ -499,6 +510,9 @@
     emojiImage.scan();
     emojiTooltip.start();
     domObserver.start(main);
+    document.addEventListener('mousemove', (e) => {
+      lastPointer = { x: e.clientX, y: e.clientY };
+    });
   }
 
   setTimeout(init, CONFIG.initDelayMs);
