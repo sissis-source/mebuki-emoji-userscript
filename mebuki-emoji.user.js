@@ -342,13 +342,18 @@
 
     function getEmojiTag(img) {
       const alt = img?.alt ?? '';
-      if (!alt.includes(UNKNOWN_ALT)) {
-        return normalizeEmojiText(alt);
+
+      if (alt.includes(UNKNOWN_ALT)) {
+        const fileName = getFileName(img.src);
+        const iconName = icons[fileName];
+        return normalizeEmojiText(iconName || alt || UNKNOWN_ALT);
       }
 
-      const fileName = getFileName(img.src);
-      const iconName = icons[fileName];
-      return normalizeEmojiText(iconName || alt || UNKNOWN_ALT);
+      if (alt && !alt.includes(':')) {
+        return alt;
+      }
+
+      return normalizeEmojiText(alt);
     }
 
     async function copyToClipboard(img) {
