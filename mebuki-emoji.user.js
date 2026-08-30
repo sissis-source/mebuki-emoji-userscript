@@ -350,6 +350,7 @@
 
   const emojiTooltip = (() => {
     const copyHintAttribute = 'data-mebuki-copy-hint';
+    let keydownListener = null;
 
     function addCopyHint(tooltip) {
       if (tooltip.hasAttribute(copyHintAttribute)) return;
@@ -375,13 +376,37 @@
       if (img) mebukiEmoji.copyToClipboard(img);
     }
 
+    function attachKeydownListener() {
+      if (keydownListener) return;
+      keydownListener = copyFromTooltip;
+      document.addEventListener('keydown', keydownListener);
+    }
+
+    function detachKeydownListener() {
+      if (!keydownListener) return;
+      document.removeEventListener('keydown', keydownListener);
+      keydownListener = null;
+    }
+
+    function updateListenerState() {
+      const isTooltipOpen = !!getVisibleTooltip();
+      if (isTooltipOpen) {
+        attachKeydownListener();
+      } else {
+        detachKeydownListener();
+      }
+    }
+
     function scan() {
       const tooltip = document.querySelector(CONFIG.tooltipSelector);
-      if (tooltip) addCopyHint(tooltip);
+      if (tooltip) {
+        addCopyHint(tooltip);
+      }
+
+      updateListenerState();
     }
 
     function start() {
-      document.addEventListener('keydown', copyFromTooltip);
       const observer = new MutationObserver(scan);
       observer.observe(document.body, { childList: true, subtree: true });
       scan();
