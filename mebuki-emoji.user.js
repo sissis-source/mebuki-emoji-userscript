@@ -2,7 +2,7 @@
 // @name         めぶきちゃん 絵文字にマウス乗せると拡大
 // @namespace    https://raw.githubusercontent.com/sissis-source/
 // @homepage     https://github.com/sissis-source/mebuki-emoji-userscript
-// @version      2026.06.10.04
+// @version      2026.06.10.05
 // @description  めぶきちゃんの絵文字にマウスを乗せると拡大表示するユーザースクリプト
 // @author       sissis
 // @match        https://mebuki.moe/app*
@@ -321,14 +321,34 @@
       "w6ob979g404osx738o9yxs74.webp": ":sushinarusan:",
     };
 
+    function normalizeEmojiText(value) {
+      if (typeof value !== 'string') {
+        return UNKNOWN_EMOJI;
+      }
+
+      const trimmed = value.trim();
+      const inner = trimmed.replace(/^<|>$/g, '').trim();
+
+      if (!inner) {
+        return UNKNOWN_EMOJI;
+      }
+
+      if (inner.startsWith(':') && inner.endsWith(':')) {
+        return `<${inner}>`;
+      }
+
+      return `<:${inner}:>`;
+    }
+
     function getEmojiTag(img) {
-      if (!img.alt.includes(UNKNOWN_ALT)) {
-        return img.alt;
+      const alt = img?.alt ?? '';
+      if (!alt.includes(UNKNOWN_ALT)) {
+        return normalizeEmojiText(alt);
       }
 
       const fileName = getFileName(img.src);
       const iconName = icons[fileName];
-      return iconName ? `<${iconName}>` : UNKNOWN_EMOJI;
+      return normalizeEmojiText(iconName || alt || UNKNOWN_ALT);
     }
 
     async function copyToClipboard(img) {
